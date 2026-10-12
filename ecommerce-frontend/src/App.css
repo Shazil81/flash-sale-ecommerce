@@ -1,0 +1,257 @@
+/* App.css - Flipkart/Amazon Inspired Theme */
+:root {
+  --primary-color: #2874f0;
+  --primary-hover: #1e5fc9;
+  --secondary-color: #f1f3f6;
+  --accent-color: #ff9f00;
+  --accent-hover: #fb641b;
+  --text-dark: #212121;
+  --text-light: #878787;
+  --bg-color: #f1f3f6;
+  --success-color: #388e3c;
+  --danger-color: #ff6161;
+}
+
+body {
+  background-color: var(--bg-color);
+  font-family: 'Roboto', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  color: var(--text-dark);
+}
+
+/* Buttons */
+.btn-primary-custom, .btn-primary {
+  background-color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+  color: white !important;
+  font-weight: 500;
+  box-shadow: 0 1px 2px 0 rgba(0,0,0,.2);
+  border-radius: 2px !important;
+  transition: background-color 0.2s ease;
+}
+
+.btn-primary-custom:hover, .btn-primary:hover {
+  background-color: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
+}
+
+.btn-warning {
+  background-color: #ff9f00 !important;
+  border-color: #ff9f00 !important;
+  color: white !important;
+  font-weight: bold;
+}
+
+.btn-success {
+  background-color: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
+  color: white !important;
+}
+
+.btn-success:hover {
+  background-color: #e25816 !important;
+  border-color: #e25816 !important;
+}
+
+/* Product Card */
+.product-card {
+  transition: box-shadow 0.2s ease;
+  border-radius: 4px;
+  border: none;
+  overflow: hidden;
+  background-color: white;
+}
+
+.product-card:hover {
+  box-shadow: 0 3px 16px 0 rgba(0,0,0,.11);
+}
+
+.product-card .card-img-wrapper {
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background-color: white;
+}
+
+.product-card img {
+  max-height: 100%;
+  object-fit: contain;
+  transition: transform 0.3s ease;
+}
+
+.product-card:hover img {
+  transform: scale(1.05);
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+
+/* Navbar */
+.navbar, nav.navbar {
+  background-color: var(--primary-color) !important;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.navbar-brand {
+  color: white !important;
+  font-size: 1.5rem;
+  font-style: italic;
+}
+
+.navbar-brand:hover {
+  color: white !important;
+}
+
+.navbar .btn-light {
+  color: var(--primary-color);
+  font-weight: 500;
+  border-radius: 2px;
+}
+
+/* Search Input */
+.search-input, .navbar input[type="search"] {
+  background-color: white !important;
+  border: none;
+  border-radius: 50px 0 0 50px !important;
+  box-shadow: none !important;
+  padding-left: 15px;
+}
+
+.search-input:focus, .navbar input[type="search"]:focus {
+  outline: none;
+  box-shadow: none !important;
+}
+
+.navbar form .btn {
+  background-color: var(--accent-color) !important;
+  border-radius: 0 50px 50px 0 !important;
+  border: none;
+  color: white;
+  font-weight: 500;
+}
+
+.navbar form .btn:hover {
+  background-color: var(--accent-hover) !important;
+}
+
+/* Flash Banner */
+.flash-banner {
+  background: white;
+  color: var(--text-dark);
+  border: 1px solid #f0f0f0;
+  border-radius: 4px;
+  font-weight: 600;
+  box-shadow: 0 1px 4px 0 rgba(0,0,0,.05);
+}
+
+.flash-banner h4 {
+  color: var(--primary-color);
+  font-weight: bold;
+}
+
+/* Category Pills */
+.category-pill {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  border: none;
+  border-radius: 50px;
+  padding: 6px 16px;
+  background-color: white;
+  color: var(--text-dark);
+  box-shadow: 0 1px 2px 0 rgba(0,0,0,.1);
+}
+
+.category-pill:hover:not(.active) {
+  background-color: var(--primary-color) !important;
+  color: white !important;
+}
+
+.category-pill.active {
+  background-color: var(--primary-color) !important;
+  color: white !important;
+  box-shadow: 0 2px 4px 0 rgba(0,0,0,.2);
+}
+
+/* Footer */
+footer {
+  background-color: #172337 !important;
+  color: white !important;
+  margin-top: 40px;
+}
+
+footer p {
+  color: white !important;
+}
+
+/* General Layout Tweaks */
+.card {
+  border-radius: 4px;
+  border: none;
+}
+
+.search-suggestion-item:hover { background-color: #f8f9fa; color: #f89020 !important; }
+
+
+
+/* Custom utilities */
+.bg-primary-custom {
+  background-color: var(--primary-color) !important;
+}
+
+.text-primary-custom {
+  color: var(--primary-color) !important;
+}
+
+/* Top Right Login Button in Navbar */
+.btn-login-nav {
+  color: #ffffff !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.9) !important;
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  font-weight: 600 !important;
+  padding: 6px 24px !important;
+  border-radius: 50px !important;
+  text-decoration: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.25s ease-in-out !important;
+  cursor: pointer !important;
+}
+
+.btn-login-nav:hover {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.3) !important;
+  border-color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  transform: translateY(-1px);
+}
+
+/* Footer Links */
+.footer-portal-link {
+  color: #ced4da !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+  padding: 6px 14px !important;
+  border-radius: 8px !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  transition: all 0.2s ease-in-out !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.footer-portal-link:hover {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25) !important;
+}

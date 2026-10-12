@@ -1,0 +1,11 @@
+**/venv/
+**/node_modules/
+**/__pycache__/
+**/*.sqlite3
+**/dist/
+**/staticfiles/
+.env
+.env.*
+!.env.example
+**/lint-results.json
+.integration/
