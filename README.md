@@ -16,7 +16,6 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Project-Portfolio%20%2F%20Demo-2563eb?style=flat-square" alt="Portfolio and demo project" />
   <img src="https://img.shields.io/badge/Payments-Razorpay%20Test%20Mode-3395ff?style=flat-square&amp;logo=razorpay&amp;logoColor=white" alt="Razorpay test payments" />
   <img src="https://img.shields.io/badge/Backend%20Tests-15%20Passed-16a34a?style=flat-square" alt="15 backend tests passed in local verification" />
 </p>
