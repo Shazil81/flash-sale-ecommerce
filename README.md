@@ -138,6 +138,7 @@ Open **http://localhost:5173**. The default API URL is `http://127.0.0.1:8000/ap
 ### Configuration
 
 See [the environment variable reference](ecommerce-backend/.env.example) and [full setup/deployment instructions](docs/SETUP.md).
+For Render, follow [the backend deployment guide](docs/RENDER.md), including the correct `core.wsgi:application` start command.
 
 - `.env.example` is a reference; Django does **not** automatically load `.env` files.
 - Payments need your own Razorpay **test** credentials and automatic capture configuration.

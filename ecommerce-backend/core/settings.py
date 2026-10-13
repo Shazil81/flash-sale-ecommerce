@@ -33,6 +33,11 @@ if not SECRET_KEY:
         raise ImproperlyConfigured('Set DJANGO_SECRET_KEY, or enable DJANGO_DEBUG for local development.')
     SECRET_KEY = 'local-development-only-key-do-not-deploy-12345678901234567890'
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+if os.environ.get('RENDER_EXTERNAL_HOSTNAME'):
+    ALLOWED_HOSTS.append(os.environ['RENDER_EXTERNAL_HOSTNAME'])
+if os.environ.get('RENDER') == 'true':
+    # Render terminates HTTPS at its trusted reverse proxy.
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = not DEBUG
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
