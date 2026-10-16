@@ -8,6 +8,7 @@
 </p>
 
 <p align="center">
+  <a href="https://flash-sale-ecommerce.vercel.app/">🌐 Live Demo</a> ·
   <a href="#tech-stack">Tech Stack</a> ·
   <a href="#features">Features</a> ·
   <a href="#getting-started">Getting Started</a> ·
@@ -198,6 +199,6 @@ flash-sale-ecommerce/
 
 ## Author
 
-Built by **[Shazil81](https://github.com/Shazil81)**.
+Built by **[Mohammad Shazil Moin](https://github.com/Shazil81)**.
 
 Technology icons are provided by [Skill Icons](https://github.com/tandpfun/skill-icons); badges are provided by [Shields.io](https://shields.io).
