@@ -9,3 +9,5 @@
 !.env.example
 **/lint-results.json
 .integration/
+.catalog-backups/
+**/products-export*.json

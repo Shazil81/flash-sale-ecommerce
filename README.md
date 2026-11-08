@@ -18,7 +18,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Payments-Razorpay%20Test%20Mode-3395ff?style=flat-square&amp;logo=razorpay&amp;logoColor=white" alt="Razorpay test payments" />
-  <img src="https://img.shields.io/badge/Backend%20Tests-15%20Passed-16a34a?style=flat-square" alt="15 backend tests passed in local verification" />
+  <img src="https://img.shields.io/badge/Backend%20Tests-22%20Passed-16a34a?style=flat-square" alt="22 backend tests passed in local verification" />
 </p>
 
 ## Overview
@@ -153,13 +153,13 @@ These are recorded local results, not a continuously updated CI status badge.
 
 | Check | Result |
 |---|---|
-| Backend regression + PostgreSQL/Redis integration tests | **15 passed** |
+| Backend regression + PostgreSQL/Redis integration tests | **22 passed** (6 November 2026) |
 | Concurrent purchases | 12 buyers / 5 units, repeated 5 times; no overselling in tested cases |
 | Concurrent duplicate payment callbacks | 8 callbacks → 1 order |
 | Real Redis | Expiry, cache hits without SQL queries, and checkout invalidation passed |
 | Frontend | ESLint and production build passed |
 | Browser + actual Razorpay Test Mode | Registration, login, cart quantities, netbanking success, and netbanking failure verified |
-| Checkout cancellation | Remains unresolved in browser verification |
+| Local browser regression | Mobile navigation, product details, forms, order retry, cancellation and payment recovery passed with mocked API/provider |
 
 Automated backend tests mock Razorpay while using real PostgreSQL/Redis for integration tests. The separate browser test used Razorpay's actual Test Mode service. Successful card and UPI payments have not been verified.
 
@@ -188,14 +188,14 @@ flash-sale-ecommerce/
 
 ## Roadmap
 
-- [ ] Resolve and verify checkout cancellation.
+- [x] Handle checkout dismissal and verify local cancellation/recovery behavior.
 - [ ] Reserve stock before payment and expire abandoned checkouts.
-- [ ] Add payment webhooks, reconciliation, and automated refunds.
+- [x] Add signed payment webhooks, reconciliation, and idempotent stock-shortage refunds (deployment configuration required).
 - [ ] Group multiple order items into one customer-facing order.
 - [ ] Add server-side pagination, saved addresses, and password reset.
 - [ ] Add deployment automation and continuous integration.
 
-**Production note:** stock is checked after payment capture. If another purchase consumes the stock, fulfillment returns a support/refund-required response. Automated refunds are not implemented. Configure HTTPS, secure environment values, explicit hosts/origins, and production services before deployment.
+**Production note:** stock is checked after payment capture. If another purchase consumes the stock, fulfillment records a refund intent and requests an idempotent refund. Configure the signed webhook and schedule reconciliation as described in the [deployment guide](docs/RENDER.md); monitor failed refunds. These new provider paths were tested with mocks and still need Razorpay Test Mode verification after deployment. Stock reservation remains a future improvement.
 
 ## Author
 

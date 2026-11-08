@@ -147,11 +147,11 @@ function Login({ portal = 'USER' }) {
         </div>
 
         <div className="card-body p-4 p-md-5 bg-white">
-          {error && <div className="alert alert-danger py-2">{error}</div>}
+          {error && <div className="alert alert-danger py-2" role="alert">{error}</div>}
           <form onSubmit={handleSubmit}>
             <div className="mb-3">
-              <label className="form-label fw-bold text-muted small text-uppercase">Username</label>
-              <input
+              <label className="form-label fw-bold text-muted small text-uppercase" htmlFor="username">Username</label>
+              <input id="username" autoComplete="username"
                 type="text"
                 className="form-control form-control-lg bg-light"
                 value={username}
@@ -161,9 +161,9 @@ function Login({ portal = 'USER' }) {
               />
             </div>
             <div className="mb-4">
-              <label className="form-label fw-bold text-muted small text-uppercase">Password</label>
+              <label className="form-label fw-bold text-muted small text-uppercase" htmlFor="password">Password</label>
               <div className="input-group">
-                <input
+                <input id="password" autoComplete="current-password"
                   type={showPassword ? "text" : "password"}
                   className="form-control form-control-lg bg-light"
                   value={password}
@@ -174,6 +174,8 @@ function Login({ portal = 'USER' }) {
                 <button
                   type="button"
                   className="btn btn-outline-secondary bg-light"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>

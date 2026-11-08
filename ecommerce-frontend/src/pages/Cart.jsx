@@ -1,13 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
-import { getAuthToken, getAuthUsername } from '../utils/auth';
+import useApiResource from '../hooks/useApiResource';
+import ProductImage from '../components/ProductImage';
+import { getAuthUsername } from '../utils/auth';
 
 function Cart() {
-  const [cart, setCart] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { data: cart, loading, error, reload } = useApiResource('/cart/');
+  const [updating, setUpdating] = useState(false);
   const [message, setMessage] = useState('');
   const [checkingOut, setCheckingOut] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState(() => sessionStorage.getItem('pending_payment_order') || '');
 
   // Expanded Address State
   const [addressObj, setAddressObj] = useState({
@@ -25,57 +28,19 @@ function Cart() {
     window.dispatchEvent(new Event('cartUpdated'));
   };
 
-  const checkRoleAndFetchCart = useCallback(async () => {
-    try {
-      const meRes = await api.get('/me/');
-      const role = meRes.data.profile?.role || meRes.data.role;
-      if (role === 'DELIVERY') {
-        navigate('/delivery-dashboard');
-        return;
-      }
-      if (role === 'ADMIN') {
-        navigate('/admin-dashboard');
-        return;
-      }
-    } catch {
-      // ignore
-    }
-  }, [navigate]);
-
-  const fetchCart = useCallback(async () => {
-    await checkRoleAndFetchCart();
-    try {
-      const response = await api.get('/cart/');
-      setCart(response.data);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching cart:", error);
-      setLoading(false);
-    }
-  }, [checkRoleAndFetchCart]);
-
-  useEffect(() => {
-    let active = true;
-    const token = getAuthToken();
-    if (!token) {
-      navigate('/login');
-    } else {
-      api.get('/cart/').then(({ data }) => { if (active) { setCart(data); setLoading(false); } }).catch(() => { if (active) { setMessage('Unable to load data. Please try again.'); setLoading(false); } });
-    }
-      return () => { active = false; };
-  }, [navigate]);
-
   const handleRemove = async (productId) => {
+    if (updating) return;
+    setUpdating(true);
     try {
       await api.post('/cart/remove/', { product_id: productId });
       setMessage("Item removed");
-      fetchCart();
+      reload();
       dispatchCartEvent();
       setTimeout(() => setMessage(''), 3000);
     } catch {
       setMessage("Failed to remove item");
       setTimeout(() => setMessage(''), 3000);
-    }
+    } finally { setUpdating(false); }
   };
 
   const handleAddressChange = (e) => {
@@ -123,18 +88,49 @@ function Cart() {
       handleRemove(productId);
       return;
     }
+    if (updating) return;
+    setUpdating(true);
     try {
       await api.post('/cart/add/', { product_id: productId, quantity: change });
-      fetchCart();
+      reload();
       dispatchCartEvent();
     } catch {
       setMessage("Failed to update quantity");
       setTimeout(() => setMessage(''), 3000);
+    } finally { setUpdating(false); }
+  };
+
+  const clearPendingPayment = () => {
+    sessionStorage.removeItem('pending_payment_order');
+    setPendingPayment('');
+  };
+
+  const showPaymentResult = (data) => {
+    if (data.payment_status === 'FULFILLED') {
+      clearPendingPayment();
+      dispatchCartEvent();
+      navigate('/orders');
+    } else if (data.payment_status === 'REFUNDED' || data.payment_status === 'REFUND_PENDING') {
+      clearPendingPayment();
+      navigate('/orders');
+    } else {
+      setMessage(data.error || 'Payment confirmation is pending. Check its status before paying again.');
+    }
+    setCheckingOut(false);
+  };
+
+  const checkPendingPayment = async () => {
+    setCheckingOut(true);
+    try {
+      const result = await api.get(`/payment/status/${encodeURIComponent(pendingPayment)}/`);
+      showPaymentResult(result.data);
+    } catch (failure) {
+      showPaymentResult(failure.response?.data || { error: 'Unable to confirm payment. Please retry; do not pay again.' });
     }
   };
 
   const handleCheckout = async () => {
-    if (checkingOut) return;
+    if (checkingOut || pendingPayment) return;
     if (!/^[0-9]{6}$/.test(addressObj.pincode) || !/^[0-9]{10}$/.test(addressObj.mobile)) {
       setMessage('Enter a valid 6-digit pincode and 10-digit mobile number.');
       return;
@@ -147,11 +143,18 @@ function Cart() {
 
     const fullAddress = `${addressObj.flat}, ${addressObj.street}, ${addressObj.city} - ${addressObj.pincode}, Ph: ${addressObj.mobile}`;
 
+    if (typeof window.Razorpay !== 'function') {
+      setMessage('Payment checkout could not load. Refresh the page and try again.');
+      return;
+    }
+    let paymentSubmitted = false;
     try {
       setCheckingOut(true);
       // 1. Create order on backend
       const response = await api.post('/payment/create-order/', { address: fullAddress });
       const { order_id, amount, currency, key } = response.data;
+      sessionStorage.setItem('pending_payment_order', order_id);
+      setPendingPayment(order_id);
 
       // 2. Open Razorpay Checkout popup
       const options = {
@@ -161,29 +164,31 @@ function Cart() {
         name: "Flash Sale Store",
         description: "Test Transaction",
         order_id: order_id,
-        modal: { ondismiss: () => setCheckingOut(false) },
+        modal: {
+          escape: true, confirm_close: false,
+          ondismiss: () => {
+            setCheckingOut(false);
+            if (!paymentSubmitted) { clearPendingPayment(); setMessage('Checkout closed. Your cart has been kept.'); }
+          }
+        },
         handler: async function (response) {
-          // 3. Verify Payment
+          // Keep the reference if the connection is lost after payment.
+          paymentSubmitted = true;
           try {
-            await api.post('/payment/verify/', {
+            const verification = await api.post('/payment/verify/', {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
               address: fullAddress
             });
-            setMessage("Payment Successful! Your order has been placed.");
-            fetchCart();
-            dispatchCartEvent();
-            setTimeout(() => setMessage(''), 5000);
-            navigate('/orders');
+            showPaymentResult(verification.data);
           } catch (error) {
-            setMessage(error.response?.data?.error || 'Payment verification failed. Please contact support.');
-            setCheckingOut(false);
+            showPaymentResult(error.response?.data || { error: 'Payment confirmation interrupted. Check its status before paying again.' });
           }
         },
         prefill: {
           name: getAuthUsername() || "Customer",
-      email: undefined,
+          email: undefined,
           contact: addressObj.mobile
         },
         theme: {
@@ -193,13 +198,13 @@ function Cart() {
 
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', function (response){
-        setCheckingOut(false);
         setMessage(`Payment Failed: ${response.error.description}`);
       });
       rzp.open();
 
     } catch (error) {
       setCheckingOut(false);
+      if (!paymentSubmitted) clearPendingPayment();
       if (error.response && error.response.data && error.response.data.error) {
         setMessage(error.response.data.error);
       } else {
@@ -209,19 +214,27 @@ function Cart() {
     }
   };
 
-  if (loading) {
+  if (loading && !cart) {
     return <div className="container mt-5 text-center"><h5>Loading Cart...</h5></div>;
   }
+
+  if (error) return <div className="container py-5" role="alert">{error} <button className="btn btn-outline-primary" onClick={reload}>Try again</button></div>;
 
   return (
     <div className="container mt-4 pb-5">
       <h2 className="mb-4">Shopping Cart</h2>
 
       {message && (
-        <div className="alert alert-info text-center position-fixed start-50 translate-middle-x shadow-lg" role="alert" style={{top: '20px', zIndex: 1050, minWidth: '300px', borderRadius: '8px'}}>
+        <div className="alert alert-info" role="status">
           {message}
         </div>
       )}
+
+      {pendingPayment && <div className="alert alert-warning" role="status">
+        <p>A previous checkout needs confirmation. Do not pay again until its status is checked.</p>
+        <button className="btn btn-outline-dark" disabled={checkingOut} onClick={checkPendingPayment}>{checkingOut ? 'Checking...' : 'Check payment status'}</button>
+        <button className="btn btn-link" disabled={checkingOut} onClick={() => { clearPendingPayment(); setMessage('Checkout cleared. If you were charged, check Payment updates in My Orders before trying again.'); }}>I did not complete payment</button>
+      </div>}
 
       {!cart || !cart.items || cart.items.length === 0 ? (
         <div className="text-center mt-5">
@@ -237,8 +250,8 @@ function Cart() {
               <div className="card mb-3 shadow-sm border-0" key={item.id}>
                 <div className="row g-0">
                   <div className="col-md-3 p-3 bg-light d-flex align-items-center justify-content-center">
-                    <img
-                      src={item.product.image_url || 'https://via.placeholder.com/150'}
+                    <ProductImage
+                      src={item.product.image_url}
                       className="img-fluid rounded-start"
                       alt={item.product.name}
                       style={{ maxHeight: '120px', objectFit: 'contain' }}
@@ -257,7 +270,8 @@ function Cart() {
                         <div className="d-flex align-items-center">
                           <button
                             className="btn btn-outline-secondary btn-sm fw-bold fs-5"
-                            style={{width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: '1'}}
+                            className="btn btn-outline-secondary quantity-button"
+                            aria-label={`Decrease quantity of ${item.product.name}`} disabled={updating || loading || checkingOut}
                             onClick={() => handleUpdateQuantity(item.product.id, item.quantity, -1)}
                           >
                             -
@@ -265,9 +279,9 @@ function Cart() {
                           <span className="mx-3 fw-bold fs-5">{item.quantity}</span>
                           <button
                             className="btn btn-outline-secondary btn-sm fw-bold fs-5"
-                            style={{width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: '1'}}
+                            className="btn btn-outline-secondary quantity-button"
                             onClick={() => handleUpdateQuantity(item.product.id, item.quantity, 1)}
-                            disabled={item.product.stock <= item.quantity}
+                            aria-label={`Increase quantity of ${item.product.name}`} disabled={item.product.stock <= item.quantity || updating || loading || checkingOut}
                           >
                             +
                           </button>
@@ -275,7 +289,7 @@ function Cart() {
 
                         <button
                           className="btn btn-sm btn-outline-danger"
-                          onClick={() => handleRemove(item.product.id)}
+                          disabled={updating || loading || checkingOut} onClick={() => handleRemove(item.product.id)}
                         >
                           <i className="bi bi-trash"></i> Remove
                         </button>
@@ -299,19 +313,24 @@ function Cart() {
 
                 <div className="row g-3">
                   <div className="col-12">
-                    <input type="text" className="form-control form-control-sm" name="flat" placeholder="Flat No, House or Building" aria-label="Flat No, House or Building" value={addressObj.flat} onChange={handleAddressChange} />
+                    <label className="form-label" htmlFor="address-flat">House or building</label>
+                    <input id="address-flat" autoComplete="address-line1" type="text" className="form-control form-control-sm" name="flat" placeholder="Flat No, House or Building" value={addressObj.flat} onChange={handleAddressChange} />
                   </div>
                   <div className="col-12">
-                    <input type="text" className="form-control form-control-sm" name="street" placeholder="Area, Street or Sector" aria-label="Area, Street or Sector" value={addressObj.street} onChange={handleAddressChange} />
+                    <label className="form-label" htmlFor="address-street">Street or area</label>
+                    <input id="address-street" autoComplete="address-line2" type="text" className="form-control form-control-sm" name="street" placeholder="Area, Street or Sector" value={addressObj.street} onChange={handleAddressChange} />
                   </div>
                   <div className="col-md-6">
-                    <input type="text" className="form-control form-control-sm" name="city" placeholder="Town / City" aria-label="Town / City" value={addressObj.city} onChange={handleAddressChange} />
+                    <label className="form-label" htmlFor="address-city">Town or city</label>
+                    <input id="address-city" autoComplete="address-level2" type="text" className="form-control form-control-sm" name="city" placeholder="Town / City" value={addressObj.city} onChange={handleAddressChange} />
                   </div>
                   <div className="col-md-6">
-                      <input type="text" className="form-control form-control-sm" name="pincode" placeholder="Pincode" aria-label="Pincode" value={addressObj.pincode} onChange={handleAddressChange} />
+                      <label className="form-label" htmlFor="address-pincode">Pincode</label>
+                    <input id="address-pincode" autoComplete="postal-code" type="text" className="form-control form-control-sm" name="pincode" placeholder="Pincode" value={addressObj.pincode} onChange={handleAddressChange} />
                     </div>
                     <div className="col-12 mt-2">
-                      <input type="tel" className="form-control form-control-sm" name="mobile" placeholder="Mobile Number" aria-label="Mobile Number" value={addressObj.mobile} onChange={handleAddressChange} maxLength="10" />
+                      <label className="form-label" htmlFor="address-mobile">Mobile number</label>
+                    <input id="address-mobile" autoComplete="tel" type="tel" className="form-control form-control-sm" name="mobile" placeholder="Mobile Number" value={addressObj.mobile} onChange={handleAddressChange} maxLength="10" />
                     </div>
                 </div>
               </div>
@@ -336,7 +355,7 @@ function Cart() {
                 <button
                   className="btn btn-warning w-100 fw-bold py-2 shadow-sm"
                   onClick={handleCheckout}
-                  disabled={checkingOut}
+                  disabled={checkingOut || updating || loading || Boolean(pendingPayment)}
                 >
                   {checkingOut ? 'Processing checkout…' : 'Proceed to Checkout'}
                 </button>

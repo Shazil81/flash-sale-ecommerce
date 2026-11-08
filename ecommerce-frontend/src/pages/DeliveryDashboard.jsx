@@ -88,7 +88,7 @@ function DeliveryDashboard() {
           <div className="col-md-4 mb-3">
             <div className="p-3 bg-light rounded text-center border h-100 d-flex flex-column justify-content-center">
               <h5 className="text-muted mb-1">Total Income</h5>
-              <h2 className="fw-bold text-success">₹{orders.filter(o => o.status === 'DELIVERED').length * 50}</h2>
+              <h2 className="fw-bold text-success">₹{orders.filter(o => o.status === 'DELIVERED').reduce((total, order) => total + Number(order.delivery_fee || 0), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</h2>
             </div>
           </div>
           <div className="col-md-4 mb-3">

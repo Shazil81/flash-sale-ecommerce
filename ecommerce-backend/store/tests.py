@@ -74,6 +74,7 @@ class ShoppingTests(APITestCase):
         self.product.stock = 0
         self.product.save()
         provider.payment.fetch.return_value = {'order_id': 'order_test', 'amount': 10000, 'currency': 'INR', 'status': 'captured'}
+        provider.payment.refund.return_value = {'id': 'rfnd_test', 'status': 'pending'}
         self.assertEqual(self.verify().status_code, 409)
         self.assertEqual(Order.objects.count(), 0)
 
@@ -110,3 +111,91 @@ class ShoppingTests(APITestCase):
         provider.utility.verify_payment_signature.side_effect = razorpay.errors.SignatureVerificationError('Invalid')
         self.assertEqual(self.verify().status_code, 400)
         self.assertEqual(Order.objects.count(), 0)
+
+    def test_public_product_details(self):
+        self.client.force_authenticate(None)
+        result = self.client.get(f'/api/products/{self.product.pk}/')
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.data['description'], 'Example')
+        self.assertEqual(self.client.get('/api/products/999999/').status_code, 404)
+
+    @patch('store.views.razorpay_client')
+    def test_authorized_payment_waits_for_capture_and_recovers(self, provider):
+        self.payment()
+        entity = {'id': 'pay_test', 'order_id': 'order_test', 'amount': 10000, 'currency': 'INR', 'status': 'authorized'}
+        provider.payment.fetch.return_value = entity
+        self.assertEqual(self.verify().status_code, 202)
+        self.assertFalse(Order.objects.exists())
+        provider.order.payments.return_value = {'items': [{**entity, 'status': 'captured'}]}
+        response = self.client.get('/api/payment/status/order_test/')
+        self.assertEqual(response.data['payment_status'], 'FULFILLED')
+        self.assertEqual(Order.objects.count(), 1)
+
+    @patch('store.views.razorpay_client')
+    def test_shortage_refund_is_idempotent_and_never_fulfills_after_retry(self, provider):
+        from unittest.mock import ANY
+        payment = self.payment()
+        self.product.stock = 0
+        self.product.save()
+        provider.payment.fetch.return_value = {'order_id': 'order_test', 'amount': 10000, 'currency': 'INR', 'status': 'captured'}
+        provider.payment.refund.side_effect = [TimeoutError(), {'id': 'rfnd_test', 'status': 'processed'}]
+        with self.assertLogs('store.views', level='ERROR'):
+            first = self.verify()
+        self.assertEqual(first.status_code, 409)
+        self.assertEqual(first.data['payment_status'], 'REFUND_REQUIRED')
+        self.product.stock = 3
+        self.product.save()
+        self.assertEqual(self.verify().data['payment_status'], 'REFUNDED')
+        self.assertEqual(self.verify().data['payment_status'], 'REFUNDED')
+        self.assertEqual(provider.payment.refund.call_count, 2)
+        calls = provider.payment.refund.call_args_list
+        self.assertEqual(calls[0], calls[1])
+        provider.payment.refund.assert_called_with('pay_test', 10000, headers={'X-Refund-Idempotency': f'flashsale-refund-{payment.pk}'}, timeout=ANY)
+        self.assertFalse(Order.objects.exists())
+
+    def webhook(self, event, secret='webhook-test'):
+        import hashlib
+        import hmac
+        import json
+        body = json.dumps(event).encode()
+        signature = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+        return self.client.post('/api/payment/webhook/', body, content_type='application/json', HTTP_X_RAZORPAY_SIGNATURE=signature)
+
+    @override_settings(RAZORPAY_WEBHOOK_SECRET='webhook-test')
+    @patch('store.views.razorpay_client')
+    def test_signed_webhook_recovers_lost_callback_without_duplicate_orders(self, provider):
+        self.payment()
+        self.client.force_authenticate(None)
+        event = {'event': 'payment.captured', 'payload': {'payment': {'entity': {'order_id': 'order_test'}}}}
+        provider.order.payments.return_value = {'items': [{'id': 'pay_test', 'order_id': 'order_test', 'amount': 10000, 'currency': 'INR', 'status': 'captured'}]}
+        self.assertEqual(self.webhook(event).status_code, 200)
+        self.assertEqual(self.webhook(event).status_code, 200)
+        self.assertEqual(Order.objects.count(), 1)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 2)
+
+    @override_settings(RAZORPAY_WEBHOOK_SECRET='webhook-test')
+    def test_invalid_webhook_and_malformed_signed_payload_rejected(self):
+        self.assertEqual(self.webhook({'event': 'payment.captured'}, secret='wrong-secret').status_code, 400)
+        self.assertEqual(self.webhook({'event': 'payment.captured'}).status_code, 400)
+        self.assertFalse(Order.objects.exists())
+
+    @patch('store.views.razorpay_client')
+    def test_payment_history_and_status_are_customer_scoped(self, provider):
+        self.payment()
+        self.assertEqual(len(self.client.get('/api/payments/').data), 1)
+        self.client.force_authenticate(User.objects.create_user('another'))
+        self.assertEqual(self.client.get('/api/payments/').data, [])
+        self.assertEqual(self.client.get('/api/payment/status/order_test/').status_code, 404)
+        provider.order.payments.assert_not_called()
+
+    @patch('store.views.razorpay_client')
+    def test_pending_refund_can_be_reconciled(self, provider):
+        payment = self.payment()
+        payment.provider_payment_id = 'pay_test'
+        payment.provider_refund_id = 'rfnd_test'
+        payment.status = 'REFUND_PENDING'
+        payment.save()
+        provider.refund.fetch.return_value = {'id': 'rfnd_test', 'status': 'processed'}
+        self.assertEqual(self.client.get('/api/payment/status/order_test/').data['payment_status'], 'REFUNDED')
+        self.assertFalse(Order.objects.exists())

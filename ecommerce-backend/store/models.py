@@ -104,4 +104,9 @@ class Payment(models.Model):
     items = models.JSONField()
     address = models.TextField()
     fulfilled = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, default='PENDING', choices=[
+        ('PENDING', 'Awaiting payment'), ('FULFILLED', 'Order placed'),
+        ('REFUND_REQUIRED', 'Refund needs retry'), ('REFUND_PENDING', 'Refund pending'), ('REFUNDED', 'Refunded'),
+    ])
+    provider_refund_id = models.CharField(max_length=100, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)

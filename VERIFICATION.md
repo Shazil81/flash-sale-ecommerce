@@ -1,4 +1,16 @@
-# Shopping verification — 12 October 2026
+# Shopping verification
+
+## Audit fixes — 6 November 2026
+
+- All 22 backend tests passed against disposable PostgreSQL 18 on port 55432 and a dedicated local Redis container on port 6380, database 15, using unique key prefixes. No application/cloud data was changed.
+- Twelve buyers competed for five units across five rounds; exactly five orders were fulfilled in each round. Eight concurrent callbacks created one order and decremented stock once.
+- Signed webhook replay, ownership checks, authorized-to-captured recovery, refund timeout/idempotent retry, refund completion and product detail tests passed. Razorpay was mocked.
+- Redis expiry, catalog cache hits without SQL and successful checkout invalidation passed.
+- Chrome mobile regression passed for navigation/search, full product details, named form controls/password toggle, delivery registration routing, order errors/retry, checkout dismissal, pending verification and status recovery. API and Razorpay responses were fixtures; this run did not make real provider payments.
+- ESLint, production build and migration consistency checks passed. Screenshots were inspected at mobile and desktop sizes.
+- Live deployment, actual new webhook/refund behavior and successful card/UPI payments were not verified in this run. Apply migration 0007 and configure the webhook before relying on recovery in production.
+
+## Historical run — 12 October 2026
 
 ## Executed checks
 

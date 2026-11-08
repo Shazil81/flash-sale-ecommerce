@@ -15,6 +15,7 @@ function Navbar() {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
   const [userRole, setUserRole] = useState(null);
 
@@ -67,26 +68,27 @@ function Navbar() {
   };
 
   useEffect(() => {
+    const controller = new AbortController();
     const delayDebounceFn = setTimeout(async () => {
       if (searchQuery.trim().length > 1) {
         try {
-          const res = await api.get(`/products/?search=${encodeURIComponent(searchQuery.trim())}`);
-          setSuggestions(res.data.slice(0, 5));
-          setShowSuggestions(true);
+          const res = await api.get(`/products/?search=${encodeURIComponent(searchQuery.trim())}`, { signal: controller.signal });
+          if (!controller.signal.aborted) { setSuggestions(res.data.slice(0, 5)); setShowSuggestions(true); }
         } catch (err) {
-          console.error(err);
+          if (!controller.signal.aborted) console.error(err);
         }
       } else {
         setSuggestions([]);
         setShowSuggestions(false);
       }
     }, 300);
-    return () => clearTimeout(delayDebounceFn);
+    return () => { clearTimeout(delayDebounceFn); controller.abort(); };
   }, [searchQuery]);
 
   const handleSearch = (e) => {
     e.preventDefault();
     setShowSuggestions(false);
+    setMenuOpen(false);
     if (searchQuery.trim()) {
       navigate(`/?search=${encodeURIComponent(searchQuery.trim())}`);
     } else {
@@ -95,23 +97,23 @@ function Navbar() {
   };
 
   return (
-    <nav className="navbar navbar-expand-lg custom-navbar px-4 mb-4 shadow-sm sticky-top">
+    <nav aria-label="Main navigation" className="navbar navbar-expand-lg custom-navbar px-4 mb-4 shadow-sm sticky-top" onClick={event => { if (event.target.closest('a')) { setMenuOpen(false); setIsDropdownOpen(false); } }}>
       <Link className="navbar-brand fw-bold text-white fs-4 d-flex align-items-center gap-2" to="/" style={{ textDecoration: 'none' }}>
-        <span style={{ fontSize: '1.6rem' }}>🛒</span>
+        <i className="bi bi-cart3" aria-hidden="true"></i>
         <span className="text-white fw-bold" style={{ letterSpacing: '0.5px' }}>Flash<span style={{ color: '#ffe500' }}>Sale</span></span>
       </Link>
 
-      <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
-        <span className="navbar-toggler-icon"></span>
+      <button className="navbar-toggler" type="button" aria-label="Toggle navigation" aria-expanded={menuOpen} aria-controls="navbarContent" onClick={() => setMenuOpen(value => !value)}>
+        <i className="bi bi-list fs-4" aria-hidden="true"></i>
       </button>
 
-      <div className="collapse navbar-collapse" id="navbarContent">
+      <div className={`collapse navbar-collapse ${menuOpen ? 'show' : ''}`} id="navbarContent" onKeyDown={event => { if (event.key === 'Escape') { setMenuOpen(false); setIsDropdownOpen(false); } }}>
         {/* Search Bar in center */}
-        <form className="d-flex mx-auto w-50 my-2 my-lg-0 position-relative" onSubmit={handleSearch}>
+        <form className="navbar-search d-flex mx-auto my-2 my-lg-0 position-relative" role="search" onSubmit={handleSearch}>
           <div className="input-group shadow-sm rounded-pill overflow-hidden" style={{ backgroundColor: 'white' }}>
-            <span className="input-group-text bg-white border-0 ps-4 pe-2" style={{ cursor: 'pointer' }} onClick={handleSearch}>
+            <button type="submit" className="input-group-text bg-white border-0 ps-4 pe-2 search-submit" aria-label="Search products">
               <i className="bi bi-search text-muted"></i>
-            </span>
+            </button>
             <input
               className="form-control border-0 shadow-none search-input pe-4"
               type="search"
@@ -120,7 +122,7 @@ function Navbar() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              onBlur={event => { if (!event.currentTarget.form?.contains(event.relatedTarget)) setShowSuggestions(false); }}
               style={{ backgroundColor: 'white' }}
             />
           </div>
@@ -155,11 +157,13 @@ function Navbar() {
                   className="btn btn-light border-0 fw-bold dropdown-toggle"
                   type="button"
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  aria-expanded={isDropdownOpen}
+                  aria-controls="account-menu"
                 >
                   Hi, {username}
                 </button>
                 {isDropdownOpen && (
-                  <ul className="dropdown-menu dropdown-menu-end shadow border-0 show" style={{ position: 'absolute', right: 0, top: '100%' }}>
+                  <ul id="account-menu" className="dropdown-menu dropdown-menu-end shadow border-0 show" style={{ position: 'absolute', right: 0, top: '100%' }}>
                     {userRole === 'ADMIN' && (
                       <li>
                         <Link className="dropdown-item" to="/admin-dashboard" onClick={() => setIsDropdownOpen(false)}>

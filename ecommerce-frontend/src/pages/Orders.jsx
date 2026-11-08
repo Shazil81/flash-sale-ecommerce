@@ -1,16 +1,26 @@
-import { useState, useEffect } from 'react';
+import useApiResource from '../hooks/useApiResource';
+import ProductImage from '../components/ProductImage';
 import api from '../api';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 function Orders() {
-  const [orders, setOrders] = useState([]);
+  const { data, loading, error, reload } = useApiResource('/orders/');
+  const orders = data || [];
+  const payments = useApiResource('/payments/');
+  const [paymentMessage, setPaymentMessage] = useState('');
+  const [checkingPayment, setCheckingPayment] = useState('');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    let active = true;
-    api.get('/orders/').then(({ data }) => { if (active) { setOrders(data); } }).catch((error) => { if (active) { console.error(error); } });
-      return () => { active = false; };
-  }, []);
+  async function checkPayment(reference) {
+    setCheckingPayment(reference);
+    try {
+      const result = await api.get(`/payment/status/${encodeURIComponent(reference)}/`);
+      setPaymentMessage(result.data.payment_status === 'PENDING' ? 'Payment confirmation is pending. Please do not pay again.' : 'Payment status updated.');
+    } catch (failure) { setPaymentMessage(failure.response?.data?.error || 'Unable to check payment. Please retry.'); }
+    finally { payments.reload(); reload(); setCheckingPayment(''); }
+  }
+
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -22,9 +32,21 @@ function Orders() {
     }
   };
 
+  if (loading) return <div className="container py-5" role="status">Loading orders…</div>;
+  if (error) return <div className="container py-5" role="alert">{error} <button className="btn btn-outline-primary" onClick={reload}>Try again</button></div>;
+
   return (
     <div className="container py-5">
       <h2 className="mb-4 fw-bold">My Orders</h2>
+      {paymentMessage && <p className="alert alert-info" role="status">{paymentMessage}</p>}
+      {payments.error && <p role="alert">Unable to load payment history. <button className="btn btn-outline-primary" onClick={payments.reload}>Retry payments</button></p>}
+      {payments.data?.some(payment => payment.status !== 'FULFILLED') && <section className="mb-4" aria-label="Payment updates">
+        <h3 className="h5">Payment updates</h3>
+        <ul className="list-group">{payments.data.filter(payment => payment.status !== 'FULFILLED').map(payment => <li className="list-group-item d-flex flex-wrap gap-3 justify-content-between align-items-center" key={payment.reference}>
+          <span><strong>₹ {(payment.amount / 100).toFixed(2)}</strong> — {payment.status.replaceAll('_', ' ').toLowerCase()}<br /><small className="text-muted">Reference: {payment.reference}</small></span>
+          {payment.status !== 'REFUNDED' && <button className="btn btn-outline-primary" disabled={Boolean(checkingPayment)} onClick={() => checkPayment(payment.reference)}>{checkingPayment === payment.reference ? 'Checking…' : 'Check payment status'}</button>}
+        </li>)}</ul>
+      </section>}
       {orders.length === 0 ? (
         <div className="alert alert-light shadow-sm text-center py-5">
           <h5>You haven't placed any orders yet.</h5>
@@ -37,7 +59,7 @@ function Orders() {
               <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
                 <div className="row g-0">
                   <div className="col-md-2 bg-light d-flex align-items-center justify-content-center p-3">
-                    <img src={order.product?.image_url || 'https://via.placeholder.com/150'} className="img-fluid rounded" alt={order.product?.name} style={{maxHeight: '120px'}} />
+                    <ProductImage src={order.product?.image_url} className="img-fluid rounded" alt={order.product?.name} style={{maxHeight: '120px'}} />
                   </div>
                   <div className="col-md-10">
                     <div className="card-body">

@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
+import ProductDetails from './pages/ProductDetails';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Cart from './pages/Cart';
@@ -34,6 +35,7 @@ function App() {
           <Suspense fallback={<div className="container py-5" role="status">Loading page…</div>}>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/products/:id" element={<ProductDetails />} />
             <Route path="/login" element={<Login portal="USER" />} />
             <Route path="/delivery-login" element={<Login portal="DELIVERY" />} />
             <Route path="/admin-login" element={<Login portal="ADMIN" />} />

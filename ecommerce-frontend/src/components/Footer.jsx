@@ -45,20 +45,18 @@ function Footer() {
         <div className="row text-center text-md-start align-items-center">
           <div className="col-md-6 mb-4 mb-md-0">
             <h5 className="fw-bold text-white mb-2 d-flex align-items-center justify-content-center justify-content-md-start gap-2">
-              <span className="fs-4">🛒</span> Flash Sale Store
+              <i className="bi bi-cart3 fs-4" aria-hidden="true"></i> Flash Sale Store
             </h5>
             <p className="text-muted mb-0 small">
-              Your favorite one-stop destination for genuine products and unbeatable deals.<br/>
-              © 2026 Flash Sale Inc. All rights reserved.
+              A project by Mohammad Shazil Moin.
             </p>
           </div>
 
           <div className="col-md-6 text-md-end">
             <h6
-              className="text-white mb-3 text-uppercase fw-bold"
-              style={{ letterSpacing: '1px', fontSize: '0.8rem' }}
+              className="text-white mb-3 fw-bold"
             >
-              Partner & Staff Portals
+              Partner and staff portals
             </h6>
             <div className="d-flex flex-column flex-sm-row justify-content-center justify-content-md-end gap-2">
               <button

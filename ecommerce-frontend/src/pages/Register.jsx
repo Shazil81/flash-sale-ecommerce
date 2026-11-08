@@ -10,17 +10,20 @@ function Register() {
   const [mobile, setMobile] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    if (submitting) return;
+    setSubmitting(true);
     try {
       const payload = { username, email, password, role, mobile };
       await api.post('/register/', payload);
       setSuccess('Registration successful! Redirecting to login...');
-      setTimeout(() => navigate('/login'), 1500);
+      setTimeout(() => navigate(role === 'DELIVERY' ? '/delivery-login' : '/login'), 1500);
     } catch (err) {
       if (err.response && err.response.data) {
         const firstError = Object.values(err.response.data)[0];
@@ -28,7 +31,7 @@ function Register() {
       } else {
         setError('Registration failed. Try again.');
       }
-    }
+    } finally { setSubmitting(false); }
   };
 
   return (
@@ -45,14 +48,14 @@ function Register() {
         </li>
       </ul>
 
-      {error && <div className="alert alert-danger">{error}</div>}
-      {success && <div className="alert alert-success">{success}</div>}
+      {error && <div className="alert alert-danger" role="alert">{error}</div>}
+      {success && <div className="alert alert-success" role="status">{success}</div>}
 
       <form onSubmit={handleSubmit}>
         <div className="mb-3">
-          <label className="form-label">Username</label>
-          <input
-            type="text"
+          <label className="form-label" htmlFor="username">Username</label>
+          <input id="username" autoComplete="username"
+                type="text"
             className="form-control"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -60,9 +63,9 @@ function Register() {
           />
         </div>
         <div className="mb-3">
-          <label className="form-label">Email</label>
-          <input
-            type="email"
+          <label className="form-label" htmlFor="email">Email</label>
+          <input id="email" autoComplete="email"
+                type="email"
             className="form-control"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -71,9 +74,9 @@ function Register() {
         </div>
 
         <div className="mb-3">
-          <label className="form-label">Mobile Number</label>
-          <input
-            type="tel"
+          <label className="form-label" htmlFor="mobile">Mobile Number</label>
+          <input id="mobile" autoComplete="tel"
+                type="tel"
             className="form-control"
             value={mobile}
             onChange={(e) => setMobile(e.target.value)}
@@ -85,16 +88,16 @@ function Register() {
         </div>
 
         <div className="mb-3">
-          <label className="form-label">Password</label>
-          <input
-            type="password"
+          <label className="form-label" htmlFor="password">Password</label>
+          <input id="password" autoComplete="new-password"
+                type="password"
             className="form-control"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
         </div>
-        <button type="submit" className="btn btn-primary-custom w-100 rounded-pill">Register</button>
+        <button type="submit" disabled={submitting || Boolean(success)} className="btn btn-primary-custom w-100 rounded-pill">Register</button>
       </form>
       <p className="text-center mt-3">
         Already have an account? <Link to="/login">Login here</Link>

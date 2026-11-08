@@ -46,11 +46,12 @@ class ConcurrentPurchaseTests(TransactionTestCase):
             finally:
                 connections.close_all()
 
-        def captured(payment_id):
+        def captured(payment_id, **kwargs):
             return {'order_id': payment_id.removeprefix('pay_'), 'amount': 10000, 'currency': 'INR', 'status': 'captured'}
 
         with patch('store.views.razorpay_client') as provider:
             provider.payment.fetch.side_effect = captured
+            provider.payment.refund.return_value = {'id': 'rfnd_mock', 'status': 'pending'}
             with ThreadPoolExecutor(max_workers=len(buyers)) as workers:
                 return list(workers.map(request, buyers))
 

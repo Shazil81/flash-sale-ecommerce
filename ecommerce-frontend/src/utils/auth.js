@@ -32,6 +32,7 @@ export const setAuthSession = (access, refresh, username, role) => {
 };
 
 export const clearThisTabAuth = () => {
+  sessionStorage.removeItem('pending_payment_order');
   // Clear strictly this tab's session
   sessionStorage.removeItem('access_token');
   sessionStorage.removeItem('refresh_token');

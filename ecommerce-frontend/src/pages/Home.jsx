@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import api from '../api';
+import useApiResource from '../hooks/useApiResource';
+import ProductImage from '../components/ProductImage';
 import { getAuthToken } from '../utils/auth';
 
 function Home() {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
+  const { data, loading, error: loadError, reload } = useApiResource('/products/');
+  const products = data || [];
   const [message, setMessage] = useState('');
   const [pageState, setPageState] = useState({ key: '', page: 1 });
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -15,11 +16,6 @@ function Home() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  useEffect(() => {
-    let active = true;
-    api.get('/products/').then(({ data }) => { if (active) { setProducts(data); setLoading(false); } }).catch(() => { if (active) { setLoadError(true); setLoading(false); } });
-      return () => { active = false; };
-  }, []);
 
   const dispatchCartEvent = () => {
     window.dispatchEvent(new Event('cartUpdated'));
@@ -91,7 +87,7 @@ function Home() {
   const paginate = (pageNumber) => setPageState({ key: filterKey, page: pageNumber });
 
   if (loading) return <div className="container py-5" role="status">Loading products…</div>;
-  if (loadError) return <div className="container py-5" role="alert">Unable to load products. <button className="btn btn-outline-primary" onClick={() => window.location.reload()}>Try again</button></div>;
+  if (loadError) return <div className="container py-5" role="alert">Unable to load products. <button className="btn btn-outline-primary" onClick={reload}>Try again</button></div>;
 
   return (
     <div className="container pb-5">
@@ -104,18 +100,19 @@ function Home() {
 
       {!searchQuery && (
         <div className="alert flash-banner text-center fw-bold fs-4 mb-4 shadow-sm" role="alert">
-          ⚡ MEGA FLASH SALE IS LIVE! Explore today's products! ⚡
+          Explore products, find your next favourite.
         </div>
       )}
 
       {/* Categories Section */}
       <div className="mb-5 overflow-auto pb-2">
-        <h5 className="mb-3 fw-bold" style={{ color: 'var(--text-dark)' }}>Explore Categories</h5>
+        <h1 className="h5 mb-3 fw-bold" style={{ color: 'var(--text-dark)' }}>Explore categories</h1>
         <div className="d-flex gap-3">
           {categories.map((cat, idx) => (
             <button type="button"
               key={idx}
               onClick={() => setSelectedCategory(cat)}
+              aria-pressed={selectedCategory === cat}
               className={`badge rounded-pill px-4 py-2 category-pill fs-6 ${selectedCategory === cat ? 'active' : 'text-dark bg-white border'}`}
             >
               {cat}
@@ -135,17 +132,14 @@ function Home() {
           currentProducts.map((item) => {
 
             return (
-              <div className="col-md-3 mb-4" key={item.id}>
+              <div className="col-12 col-sm-6 col-lg-3 mb-4" key={item.id}>
                 <div className="card h-100 border-0 product-card">
-                  <div className="position-absolute top-0 end-0 bg-danger text-white px-3 py-1 m-2 rounded-pill shadow-sm" style={{fontSize: '0.85rem', zIndex: 1, fontWeight: '600'}}>
-                    Featured
-                  </div>
                   <div className="card-img-wrapper">
-                    <img src={item.image_url || 'https://via.placeholder.com/150'} className="img-fluid" alt={item.name} />
+                    <Link to={`/products/${item.id}`} aria-label={`View ${item.name}`}><ProductImage src={item.image_url} className="img-fluid" alt={item.name} /></Link>
                   </div>
                   <div className="card-body d-flex flex-column justify-content-between">
                     <div>
-                      <h6 className="card-title text-truncate fw-bold mb-1" style={{ color: 'var(--text-dark)' }} title={item.name}>{item.name}</h6>
+                      <h2 className="card-title fw-bold mb-1"><Link className="product-name" to={`/products/${item.id}`}>{item.name}</Link></h2>
                       <p className="card-text text-muted small text-truncate mb-2" title={item.description}>{item.description}</p>
                       <div className="d-flex align-items-center gap-2 mb-2 mt-3">
                         <h5 className="text-danger fw-bold mb-0">₹ {item.price}</h5>
@@ -175,15 +169,15 @@ function Home() {
         <nav aria-label="Page navigation" className="mt-5">
           <ul className="pagination justify-content-center">
             <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-              <button className="page-link shadow-sm" onClick={() => paginate(currentPage - 1)}>Previous</button>
+              <button className="page-link shadow-sm" disabled={currentPage === 1} onClick={() => paginate(currentPage - 1)}>Previous</button>
             </li>
             {[...Array(totalPages)].map((_, index) => (
               <li key={index + 1} className={`page-item ${currentPage === index + 1 ? 'active' : ''}`}>
-                <button className="page-link shadow-sm" onClick={() => paginate(index + 1)}>{index + 1}</button>
+                <button className="page-link shadow-sm" aria-current={currentPage === index + 1 ? "page" : undefined} aria-label={`Page ${index + 1}`} onClick={() => paginate(index + 1)}>{index + 1}</button>
               </li>
             ))}
             <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-              <button className="page-link shadow-sm" onClick={() => paginate(currentPage + 1)}>Next</button>
+              <button className="page-link shadow-sm" disabled={currentPage === totalPages} onClick={() => paginate(currentPage + 1)}>Next</button>
             </li>
           </ul>
         </nav>

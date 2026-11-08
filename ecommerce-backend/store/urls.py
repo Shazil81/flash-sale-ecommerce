@@ -1,9 +1,14 @@
 from django.urls import path
 from .views import get_products, buy_product, register_user, get_cart, add_to_cart, remove_from_cart, create_razorpay_order, verify_payment, get_orders
+from .views import get_product, payment_status, payment_webhook, payment_history
 from .role_views import get_user_profile, admin_get_orders, admin_get_delivery_partners, admin_assign_delivery, delivery_get_orders, delivery_update_status, admin_approve_kyc
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
+    path('payments/', payment_history, name='payment_history'),
+    path('products/<int:product_id>/', get_product, name='get_product'),
+    path('payment/webhook/', payment_webhook, name='payment_webhook'),
+    path('payment/status/<str:provider_order_id>/', payment_status, name='payment_status'),
     path('products/', get_products, name='get_products'),
     path('buy/', buy_product, name='buy_product'),
     path('cart/', get_cart, name='get_cart'),
